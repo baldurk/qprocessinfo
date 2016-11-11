@@ -8,8 +8,9 @@
 
 #if defined(Q_OS_WIN32)
 
-#include <tlhelp32.h>
 #include <windows.h>
+
+#include <tlhelp32.h>
 
 typedef DWORD(WINAPI *PFN_GETWINDOWTHREADPROCESSID)(HWND hWnd, LPDWORD lpdwProcessId);
 typedef HWND(WINAPI *PFN_GETWINDOW)(HWND hWnd, UINT uCmd);

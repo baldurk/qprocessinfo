@@ -23,8 +23,8 @@ namespace
 {
 struct callbackContext
 {
-  callbackContext(QList<QProcessInfo> &l) : list(l) {}
-  QList<QProcessInfo> &list;
+  callbackContext(QProcessList &l) : list(l) {}
+  QProcessList &list;
 
   PFN_GETWINDOWTHREADPROCESSID GetWindowThreadProcessId;
   PFN_GETWINDOW GetWindow;
@@ -67,9 +67,9 @@ static BOOL CALLBACK fillWindowTitles(HWND hwnd, LPARAM lp)
   return TRUE;
 }
 
-QList<QProcessInfo> QProcessInfo::enumerate()
+QProcessList QProcessInfo::enumerate()
 {
-  QList<QProcessInfo> ret;
+  QProcessList ret;
 
   HANDLE h = NULL;
   PROCESSENTRY32 pe = {0};
@@ -122,9 +122,9 @@ QList<QProcessInfo> QProcessInfo::enumerate()
 #include <QRegExp>
 #include <QTextStream>
 
-QList<QProcessInfo> QProcessInfo::enumerate()
+QProcessList QProcessInfo::enumerate()
 {
-  QList<QProcessInfo> ret;
+  QProcessList ret;
 
   QDir proc("/proc");
 
@@ -326,9 +326,9 @@ QList<QProcessInfo> QProcessInfo::enumerate()
 
 #else
 
-QList<QProcessInfo> QProcessInfo::enumerate()
+QProcessList QProcessInfo::enumerate()
 {
-  QList<QProcessInfo> ret;
+  QProcessList ret;
 
   qWarning() << "Process enumeration not supported on this platform";
 

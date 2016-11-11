@@ -8,10 +8,13 @@
 
 #include <QList>
 
+class QProcessInfo;
+typedef QList<QProcessInfo> QProcessList;
+
 class QProcessInfo
 {
 public:
-  static QList<QProcessInfo> enumerate();
+  static QProcessList enumerate();
 
   uint32_t pid() const;
   void setPid(uint32_t pid);

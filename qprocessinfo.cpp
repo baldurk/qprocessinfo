@@ -111,6 +111,8 @@ QList<QProcessInfo> QProcessInfo::enumerate()
 #elif defined(Q_OS_UNIX)
 
 #include <QDir>
+#include <QProcess>
+#include <QRegExp>
 #include <QTextStream>
 
 QList<QProcessInfo> QProcessInfo::enumerate()
@@ -192,6 +194,123 @@ QList<QProcessInfo> QProcessInfo::enumerate()
       }
 
       ret.push_back(info);
+    }
+  }
+
+  {
+    // get a list of all windows. This is faster than searching with --pid
+    // for every PID, and usually there will be fewer windows than PIDs.
+    QStringList params;
+    params << "search"
+           << "--onlyvisible"
+           << ".*";
+
+    QList<QByteArray> windowlist;
+
+    {
+      QProcess process;
+      process.start("xdotool", params);
+      process.waitForFinished(100);
+
+      windowlist = process.readAll().split('\n');
+    }
+
+    // if xdotool isn't installed or failed to run, we'll have an empty
+    // list or else entries that aren't numbers, so we'll skip them
+    for(const QByteArray &win : windowlist)
+    {
+      // empty result, no window matches
+      if(win.size() == 0)
+        continue;
+
+      bool isUInt = false;
+      win.toUInt(&isUInt);
+
+      // skip invalid lines (maybe because xdotool failed)
+      if(!isUInt)
+        continue;
+
+      // get the PID of the window first. If one isn't available we won't
+      // be able to match it up to our entries so don't proceed further
+      params.clear();
+      params << "getwindowpid" << win;
+
+      uint32_t pid = 0;
+
+      {
+        QProcess process;
+        process.start("xdotool", params);
+        process.waitForFinished(100);
+
+        pid = process.readAll().trimmed().toUInt(&isUInt);
+      }
+
+      // can't find a PID, skip this window
+      if(!isUInt || pid == 0)
+        continue;
+
+      // check to see if the geometry is somewhere offscreen
+      params.clear();
+      params << "getwindowgeometry" << win;
+
+      QList<QByteArray> winGeometry;
+
+      {
+        QProcess process;
+        process.start("xdotool", params);
+        process.waitForFinished(100);
+
+        winGeometry = process.readAll().split('\n');
+      }
+
+      // should be three lines: Window <id> \n Position: ... \n Geometry: ...
+      if(winGeometry.size() >= 3)
+      {
+        QRegExp pos("Position: (-?\\d+),(-?\\d+)");
+        QRegExp geometry("Geometry: (\\d+)x(\\d+)");
+
+        QString posString = QString::fromUtf8(winGeometry[1]);
+        QString geometryString = QString::fromUtf8(winGeometry[2]);
+
+        int x = 0, y = 0, w = 1000, h = 1000;
+
+        if(pos.indexIn(posString) >= 0)
+        {
+          x = pos.cap(1).toInt();
+          y = pos.cap(2).toInt();
+        }
+
+        if(geometry.indexIn(geometryString) >= 0)
+        {
+          w = geometry.cap(1).toInt();
+          h = geometry.cap(2).toInt();
+        }
+
+        // some invisible windows are placed off screen, if we detect that skip it
+        if(x + w < 0 && y + h < 0)
+          continue;
+      }
+
+      // take the first window name
+      {
+        params.clear();
+        params << "getwindowname" << win;
+
+        QProcess process;
+        process.start("xdotool", params);
+        process.waitForFinished(100);
+
+        QString windowTitle = QString::fromUtf8(process.readAll().split('\n')[0]);
+
+        for(QProcessInfo &info : ret)
+        {
+          if(info.pid() == pid)
+          {
+            info.setWindowTitle(windowTitle);
+            break;
+          }
+        }
+      }
     }
   }
 

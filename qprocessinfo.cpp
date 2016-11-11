@@ -52,6 +52,7 @@ static BOOL CALLBACK fillWindowTitles(HWND hwnd, LPARAM lp)
       ctx->GetWindowTextW(hwnd, buf, len + 1);
       buf[len] = 0;
       info.setWindowTitle(QString::fromStdWString(std::wstring(buf)));
+      delete[] buf;
       return TRUE;
     }
   }
@@ -175,6 +176,8 @@ QList<QProcessInfo> QProcessInfo::enumerate()
         }
 
         info.setCommandLine(QString::fromUtf8(contents).trimmed());
+
+        cmdline.close();
       }
 
       ret.push_back(info);

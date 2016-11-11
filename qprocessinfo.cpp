@@ -133,26 +133,37 @@ QList<QProcessInfo> QProcessInfo::enumerate()
 
       QDir processDir("/proc/" + f);
 
-      QFile status(processDir.absoluteFilePath("status"));
-      if(status.open(QIODevice::ReadOnly))
+      // default to the exe symlink if valid
+      QFileInfo exe(processDir.absoluteFilePath("exe"));
+      exe = QFileInfo(exe.symLinkTarget());
+      info.setName(exe.completeBaseName());
+
+      // if we didn't get a name from the symlink, check in the status file
+      if(info.name() == "")
       {
-        QByteArray contents = status.readAll();
-
-        QTextStream in(&contents);
-        while(!in.atEnd())
+        QFile status(processDir.absoluteFilePath("status"));
+        if(status.open(QIODevice::ReadOnly))
         {
-          QString line = in.readLine();
+          QByteArray contents = status.readAll();
 
-          if(line.startsWith("Name:"))
+          QTextStream in(&contents);
+          while(!in.atEnd())
           {
-            line.remove(0, 5);
-            info.setName(line.trimmed());
-            break;
+            QString line = in.readLine();
+
+            if(line.startsWith("Name:"))
+            {
+              line.remove(0, 5);
+              // if we're using this name, surround with []s to indicate it's not a file
+              info.setName(QString("[%1]").arg(line.trimmed()));
+              break;
+            }
           }
+          status.close();
         }
-        status.close();
       }
 
+      // get the command line
       QFile cmdline(processDir.absoluteFilePath("cmdline"));
       if(cmdline.open(QIODevice::ReadOnly))
       {
@@ -165,8 +176,8 @@ QList<QProcessInfo> QProcessInfo::enumerate()
           QString firstparam = QString::fromUtf8(contents.data(), nullIdx);
 
           // if name is a truncated form of a filename, replace it
-          if(firstparam.startsWith(info.name()) && QFileInfo::exists(firstparam))
-            info.setName(firstparam);
+          if(firstparam.endsWith(info.name()) && QFileInfo::exists(firstparam))
+            info.setName(QFileInfo(firstparam).completeBaseName());
 
           // if we don't have a name, replace it but with []s
           if(info.name() == "")

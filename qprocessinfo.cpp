@@ -140,7 +140,7 @@ QProcessList QProcessInfo::enumerate()
       QProcessInfo info;
       info.setPid(pid);
 
-      QDir processDir(QStringLiteral("/proc") + f);
+      QDir processDir(QStringLiteral("/proc/") + f);
 
       // default to the exe symlink if valid
       QFileInfo exe(processDir.absoluteFilePath(QStringLiteral("exe")));

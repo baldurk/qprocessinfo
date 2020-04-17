@@ -117,8 +117,28 @@ QProcessList QProcessInfo::enumerate(bool includeWindowTitles)
 
   return ret;
 }
+#elif defined(Q_OS_MAC)
 
-#elif defined(Q_OS_UNIX)
+#include <QProcess>
+
+QProcessList QProcessInfo::enumerate(bool includeWindowTitles)
+{
+    QProcessList ret;
+    QProcess ps, awk;
+    ps.setStandardOutputProcess(&awk);
+    ps.start("/bin/ps", {"aux"});
+    awk.start("/usr/bin/awk", {"{print $2}"});
+    awk.waitForFinished();
+    QList<QByteArray> pids = awk.readAllStandardOutput().split('\n');
+    for (QString pid : pids) {
+        QProcessInfo info;
+        info.setPid(pid.toInt());
+        ret.push_back(info);
+    }
+    return ret;
+}
+
+#elif defined(Q_OS_LINUX)
 
 #include <QDir>
 #include <QProcess>
